@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>学習型じゃんけん</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="game-container">
+    <h1>学習型じゃんけん</h1>
+    <div class="hands">
+      <button class="hand-button" onclick="play('rock')">✊ グー</button>
+      <button class="hand-button" onclick="play('paper')">✋ パー</button>
+      <button class="hand-button" onclick="play('scissors')">✌️ チョキ</button>
+    </div>
+    <div class="stats">
+      <p>試合数: <span id="total-games">0</span></p>
+      <p>勝ち: <span id="wins">0</span></p>
+      <p>負け: <span id="losses">0</span></p>
+      <p>引き分け: <span id="draws">0</span></p>
+    </div>
+    <button onclick="resetGame()" class="reset-button">リセット</button>
+    <input type="file" id="file-input" accept=".xlsx" onchange="loadExcel(event)">
+    <button onclick="saveToExcel()" class="export-button">保存</button>
+    <h2>履歴</h2>
+    <table id="history-table">
+      <thead>
+        <tr>
+          <th>試合番号</th>
+          <th>プレイヤーの手</th>
+          <th>コンピューターの手</th>
+          <th>結果</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
