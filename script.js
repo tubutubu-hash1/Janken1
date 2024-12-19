@@ -1,169 +1,224 @@
-let stats = {
-  wins: 0,
-  losses: 0,
-  draws: 0,
-  totalGames: 0,
-  history: [] // 履歴を保存
-};
-let workbook = null; // 読み込んだExcelファイルを保持
+<!-- index.html -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+// 勝敗記録の追記
+let resultsForExcel = []; // Excel用の結果保存用配列
 
-const hands = ["rock", "paper", "scissors"];
+function playGame(playerMove) {
+    const computerMove = decideComputerMove(moves);
+    const result = judge(playerMove, computerMove);
 
-// 機械学習用変数
-let model = null; // 学習モデル
+    moves.push(playerMove);
+    history.push(result);
+    games++;
 
-// じゃんけんの処理
-function play(playerHand) {
-  const computerHand = getComputerHand(playerHand);
-  const result = getResult(playerHand, computerHand);
+    if (result === "win") {
+        win++;
+    } else if (result === "lose") {
+        lose++;
+    } else {
+        draw++;
+    }
 
-  stats.totalGames++;
-  if (result === "win") stats.wins++;
-  if (result === "loss") stats.losses++;
-  if (result === "draw") stats.draws++;
-
-  stats.history.push({ playerHand, computerHand, result });
-  updateStats();
-  updateHistoryTable();
-
-  // 学習データの更新
-  updateModel(playerHand, computerHand, result);
-}
-
-// 勝敗判定
-function getResult(player, computer) {
-  if (player === computer) return "draw";
-  if (
-    (player === "rock" && computer === "scissors") ||
-    (player === "scissors" && computer === "paper") ||
-    (player === "paper" && computer === "rock")
-  ) {
-    return "win";
-  }
-  return "loss";
-}
-
-// AIの手を取得 (ランダムまたは学習結果)
-function getComputerHand(playerHand) {
-  if (model && stats.history.length > 5) {
-    const lastPlayerHand = stats.history[stats.history.length - 1]?.playerHand || "rock";
-    const lastComputerHand = stats.history[stats.history.length - 1]?.computerHand || "rock";
-
-    // プレイヤーの手とコンピューターの手から次を予測
-    const prediction = model.predict([[handToNumber(lastPlayerHand), handToNumber(lastComputerHand)]]);
-    return numberToHand(prediction[0]);
-  } else {
-    return hands[Math.floor(Math.random() * hands.length)];
-  }
-}
-
-// 学習データを更新し、モデルを再学習
-function updateModel(playerHand, computerHand, result) {
-  const tf = ml5.logisticRegression();
-
-  // トレーニングデータを準備
-  const data = stats.history.map((entry) => [
-    handToNumber(entry.playerHand),
-    handToNumber(entry.computerHand),
-    resultToNumber(entry.result)
-  ]);
-
-  if (data.length > 5) {
-    tf.addData(data, stats.history.map((entry) => handToNumber(entry.playerHand)));
-    tf.train(() => {
-      model = tf;
+    // Excel用データに記録
+    resultsForExcel.push({
+        "試合回数": games,
+        "プレイヤーの手": playerMove,
+        "コンピュータの手": computerMove,
+        "結果": result,
+        "勝ち": win,
+        "負け": lose,
+        "引き分け": draw,
     });
-  }
+
+    updateUI(playerMove, computerMove, result); // UI更新
+    saveResultsToExcel(); // Excel保存
 }
 
-// 統計のUI更新
-function updateStats() {
-  document.getElementById("total-games").textContent = stats.totalGames;
-  document.getElementById("wins").textContent = stats.wins;
-  document.getElementById("losses").textContent = stats.losses;
-  document.getElementById("draws").textContent = stats.draws;
+function updateUI(playerMove, computerMove, result) {
+    document.getElementById("player-move").textContent = playerMove;
+    document.getElementById("computer-move").textContent = computerMove;
+    document.getElementById("result").textContent = result;
+    document.getElementById("win-count").textContent = win;
+    document.getElementById("lose-count").textContent = lose;
+    document.getElementById("draw-count").textContent = draw;
+    document.getElementById("games-count").textContent = games;
 }
 
-// 履歴テーブルの更新
-function updateHistoryTable() {
-  const tableBody = document.getElementById("history-table").querySelector("tbody");
-  tableBody.innerHTML = ""; // 既存の行をクリア
-  stats.history.forEach((entry, index) => {
-    const row = tableBody.insertRow();
-    row.insertCell().textContent = index + 1;
-    row.insertCell().textContent = entry.playerHand;
-    row.insertCell().textContent = entry.computerHand;
-    row.insertCell().textContent = entry.result;
-  });
+function saveResultsToExcel() {
+    const worksheet = XLSX.utils.json_to_sheet(resultsForExcel); // JSONデータをワークシートに変換
+    const workbook = XLSX.utils.book_new(); // 新しいExcelファイルを作成
+    XLSX.utils.book_append_sheet(workbook, worksheet, "ジャンケン結果");
+
+    // ブラウザでダウンロードさせる
+    const excelData = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([excelData], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "ジャンケン結果.xlsx";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
-// Excelファイルを読み込む
-function loadExcel(event) {
-  const file = event.target.files[0];
-  const reader = new FileReader();
-
-  reader.onload = function (e) {
-    const data = new Uint8Array(e.target.result);
-    workbook = XLSX.read(data, { type: "array" });
-
-    // 既存の履歴をロード
-    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(worksheet);
-    stats.history = json.map((row, index) => ({
-      playerHand: row["プレイヤーの手"],
-      computerHand: row["コンピューターの手"],
-      result: row["結果"]
-    }));
-    stats.totalGames = stats.history.length;
-    stats.wins = stats.history.filter(h => h.result === "win").length;
-    stats.losses = stats.history.filter(h => h.result === "loss").length;
-    stats.draws = stats.history.filter(h => h.result === "draw").length;
-
-    updateStats();
-    updateHistoryTable();
-  };
-
-  reader.readAsArrayBuffer(file);
-}
-
-// 履歴をExcelに保存
-function saveToExcel() {
-  const worksheetData = stats.history.map((entry, index) => ({
-    試合番号: index + 1,
-    プレイヤーの手: entry.playerHand,
-    コンピューターの手: entry.computerHand,
-    結果: entry.result
-  }));
-
-  const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-  if (!workbook) {
-    workbook = XLSX.utils.book_new();
-  }
-  XLSX.utils.book_append_sheet(workbook, worksheet, "じゃんけん履歴");
-  XLSX.writeFile(workbook, "じゃんけん結果.xlsx");
-}
-
-// 手を数字に変換
-function handToNumber(hand) {
-  return hands.indexOf(hand);
-}
-
-// 数字を手に変換
-function numberToHand(number) {
-  return hands[number];
-}
-
-// 結果を数字に変換
-function resultToNumber(result) {
-  return result === "win" ? 1 : result === "loss" ? -1 : 0;
-}
-
-// リセット
 function resetGame() {
-  stats = { wins: 0, losses: 0, draws: 0, totalGames: 0, history: [] };
-  updateStats();
-  updateHistoryTable();
+    moves = [];
+    history = [];
+    win = 0;
+    lose = 0;
+    draw = 0;
+    games = 0;
+    resultsForExcel = []; // Excelデータのリセット
+
+    document.getElementById("player-move").textContent = "";
+    document.getElementById("computer-move").textContent = "";
+    document.getElementById("result").textContent = "";
+    document.getElementById("win-count").textContent = win;
+    document.getElementById("lose-count").textContent = lose;
+    document.getElementById("draw-count").textContent = draw;
+    document.getElementById("games-count").textContent = games;
+}
+// 勝敗の記録を保存する変数
+let moves = [];
+let history = [];
+let win = 0;
+let lose = 0;
+let draw = 0;
+let games = 0; // 試合回数
+
+function randomMove() {
+    const moves = ["グー", "チョキ", "パー"];
+    return moves[Math.floor(Math.random() * moves.length)];
 }
 
-// ダブルタップでズーム防止
-document.addEventListener("dblclick", (e) => e.preventDefault());
+function buildTransitionMatrix(moves, order) {
+    const transitionMatrix = {};
+    for (let i = 0; i < moves.length - order; i++) {
+        const state = moves.slice(i, i + order).join(",");
+        const nextMove = moves[i + order];
+        if (!transitionMatrix[state]) {
+            transitionMatrix[state] = { "グー": 0, "チョキ": 0, "パー": 0 };
+        }
+        transitionMatrix[state][nextMove]++;
+    }
+    return transitionMatrix;
+}
+
+function predictNextMove(moves, order) {
+    const state = moves.slice(-order).join(",");
+    const transitionMatrix = buildTransitionMatrix(moves, order);
+
+    if (transitionMatrix[state]) {
+        const nextMoves = transitionMatrix[state];
+        let maxMove = null;
+        let maxCount = -1;
+        for (const move in nextMoves) {
+            if (nextMoves[move] > maxCount) {
+                maxMove = move;
+                maxCount = nextMoves[move];
+            }
+        }
+        return maxMove;
+    } else {
+        return randomMove(); // データがない場合はランダムに手を選択
+    }
+}
+
+function predictMoveByFrequency(moves) {
+    const moveCounts = { "グー": 0, "チョキ": 0, "パー": 0 };
+    for (const move of moves) {
+        moveCounts[move]++;
+    }
+    let maxMove = null;
+    let maxCount = -1;
+    for (const move in moveCounts) {
+        if (moveCounts[move] > maxCount) {
+            maxMove = move;
+            maxCount = moveCounts[move];
+        }
+    }
+    return maxMove || randomMove();
+}
+
+function decideComputerMove(moves, order = 5) {
+    console.log("プレイヤーの過去の手:", moves);
+    
+    if (moves.length < order) {
+        console.log("履歴が短すぎます。ランダムな手を出します。");
+        return randomMove();
+    }
+    
+    const predictedMoveByMarkov = predictNextMove(moves, order);
+    const predictedMoveByFrequency = predictMoveByFrequency(moves);
+
+    // マルコフ連鎖と頻度ベースの予測を併用
+    const predictedMove = predictedMoveByMarkov || predictedMoveByFrequency;
+    const counterMoves = { "グー": "パー", "チョキ": "グー", "パー": "チョキ" };
+    const computerMove = counterMoves[predictedMove];
+
+    console.log("予測された次の手:", predictedMove);
+    console.log("コンピュータの手:", computerMove);
+    
+    return computerMove || randomMove();  // エラー時にランダムな手を返す
+}
+
+function judge(player, computer) {
+    if (player === computer) {
+        return "draw";
+    } else if (
+        (player === "グー" && computer === "チョキ") ||
+        (player === "チョキ" && computer === "パー") ||
+        (player === "パー" && computer === "グー")
+    ) {
+        return "win";
+    } else {
+        return "lose";
+    }
+}
+
+function playGame(playerMove) {
+    const computerMove = decideComputerMove(moves);
+    const result = judge(playerMove, computerMove);
+
+    moves.push(playerMove);
+    history.push(result);
+    games++;
+
+    if (result === "win") {
+        win++;
+    } else if (result === "lose") {
+        lose++;
+    } else {
+        draw++;
+    }
+
+    document.getElementById("player-move").textContent = playerMove;
+    document.getElementById("computer-move").textContent = computerMove;
+    document.getElementById("result").textContent = result;
+    document.getElementById("win-count").textContent = win;
+    document.getElementById("lose-count").textContent = lose;
+    document.getElementById("draw-count").textContent = draw;
+    document.getElementById("games-count").textContent = games; // 試合回数を表示
+}
+
+function resetGame() {
+    moves = [];
+    history = [];
+    win = 0;
+    lose = 0;
+    draw = 0;
+    games = 0;
+
+    document.getElementById("player-move").textContent = "";
+    document.getElementById("computer-move").textContent = "";
+    document.getElementById("result").textContent = "";
+    document.getElementById("win-count").textContent = win;
+    document.getElementById("lose-count").textContent = lose;
+    document.getElementById("draw-count").textContent = draw;
+    document.getElementById("games-count").textContent = games;
+}
+
+document.getElementById("rock").addEventListener("click", () => playGame("グー"));
+document.getElementById("scissors").addEventListener("click", () => playGame("チョキ"));
+document.getElementById("paper").addEventListener("click", () => playGame("パー"));
+document.getElementById("reset").addEventListener("click", resetGame);
