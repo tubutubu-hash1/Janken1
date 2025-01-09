@@ -30,6 +30,28 @@ function playGame(playerHand) {
 
     // 結果を配列に保存
     results.push({ playerHand, aiHand, result });
+
+    // 統計を更新
+    updateStatistics();
+}
+
+// 統計の更新
+function updateStatistics() {
+    const totalGames = results.length;
+    const wins = results.filter(result => result.result === '勝ち').length;
+    const draws = results.filter(result => result.result === '引き分け').length;
+    const losses = results.filter(result => result.result === '負け').length;
+
+    // 勝率（引き分けを除外した試合数を基準）
+    const nonDrawGames = totalGames - draws;
+    const winRate = nonDrawGames > 0 ? ((wins / nonDrawGames) * 100).toFixed(2) : 0;
+
+    // 統計をHTMLに反映
+    document.getElementById('total-games').textContent = `総ゲーム数: ${totalGames}`;
+    document.getElementById('win-count').textContent = `勝数: ${wins}`;
+    document.getElementById('draw-count').textContent = `引き分け数: ${draws}`;
+    document.getElementById('loss-count').textContent = `負け数: ${losses}`;
+    document.getElementById('win-rate').textContent = `勝率（引き分け除外）: ${winRate}%`;
 }
 
 // 結果をExcelファイルで保存
@@ -48,4 +70,11 @@ function downloadResults() {
 
     // Excelファイルをダウンロード
     XLSX.writeFile(workbook, 'janken_results.xlsx');
+}
+
+// ゲームをリセット
+function resetGame() {
+    results.length = 0; // 配列を空にする
+    document.getElementById('result').textContent = '';
+    updateStatistics(); // 統計をリセット
 }
