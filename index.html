@@ -10,9 +10,9 @@
     <div class="container">
         <h1>AIとじゃんけん</h1>
         <div class="choices">
-            <button onclick="playGame('グー')">グー</button>
-            <button onclick="playGame('チョキ')">チョキ</button>
-            <button onclick="playGame('パー')">パー</button>
+            <button id="rock" onclick="playGame('グー')">グー</button>
+            <button id="scissors" onclick="playGame('チョキ')">チョキ</button>
+            <button id="paper" onclick="playGame('パー')">パー</button>
         </div>
         <div id="result"></div>
         <div id="statistics" class="statistics">
@@ -33,9 +33,10 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="script.js"></script>
     <script>
-        // JavaScriptでダブルタップズームを無効化
+        // ダブルタップズームを無効化するが、2本指ジェスチャーは許可する
         document.addEventListener('touchstart', (event) => {
-            if (event.touches.length > 1) {
+            // 1本指のタッチのみズームを無効化
+            if (event.touches.length === 1) {
                 event.preventDefault();
             }
         }, { passive: false });
@@ -44,11 +45,20 @@
 
         document.addEventListener('touchend', (event) => {
             const now = new Date().getTime();
-            if (now - lastTouchEnd <= 300) {
+            // 300ms以内のダブルタップズームを無効化
+            if (now - lastTouchEnd <= 300 && event.touches.length === 0) {
                 event.preventDefault();
             }
             lastTouchEnd = now;
         }, { passive: false });
+
+        // ボタン連打の結果反映
+        document.querySelectorAll('.choices button').forEach(button => {
+            button.addEventListener('click', event => {
+                const playerHand = event.target.textContent;
+                playGame(playerHand);
+            });
+        });
     </script>
 </body>
 </html>
