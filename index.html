@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>AIとじゃんけん</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -22,6 +22,8 @@
             <p id="draw-count">引き分け数: 0</p>
             <p id="loss-count">負け数: 0</p>
             <p id="win-rate">勝率（引き分け除外）: 0%</p>
+            <p id="ai-success-count">AI予測成功数: 0</p>
+            <p id="ai-failure-count">AI予測失敗数: 0</p>
         </div>
         <div class="buttons">
             <button onclick="downloadResults()">結果をExcelで保存</button>
@@ -30,5 +32,23 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="script.js"></script>
+    <script>
+        // JavaScriptでダブルタップズームを無効化
+        document.addEventListener('touchstart', (event) => {
+            if (event.touches.length > 1) {
+                event.preventDefault();
+            }
+        }, { passive: false });
+
+        let lastTouchEnd = 0;
+
+        document.addEventListener('touchend', (event) => {
+            const now = new Date().getTime();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, { passive: false });
+    </script>
 </body>
 </html>
