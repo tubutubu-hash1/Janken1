@@ -1,80 +1,73 @@
-// 結果を保存する配列
+// プレイヤーの手を保存する配列
 const results = [];
+const playerMoves = [];
+let aiSuccessCount = 0;
+let aiFailureCount = 0;
 
-// AIの手をランダムに生成
-function getAIHand() {
-    const hands = ['グー', 'チョキ', 'パー'];
-    return hands[Math.floor(Math.random() * hands.length)];
+// ランダムに手を選択
+function randomMove() {
+    const moves = ["グー", "チョキ", "パー"];
+    return moves[Math.floor(Math.random() * moves.length)];
 }
 
-// 勝敗を判定
-function determineWinner(playerHand, aiHand) {
-    if (playerHand === aiHand) return '引き分け';
-    if (
-        (playerHand === 'グー' && aiHand === 'チョキ') ||
-        (playerHand === 'チョキ' && aiHand === 'パー') ||
-        (playerHand === 'パー' && aiHand === 'グー')
-    ) {
-        return '勝ち';
+// ゲームのロジックはそのままにします
+function decideComputerMove(moves, order = 3) {
+    if (moves.length < order) {
+        return randomMove();
     }
-    return '負け';
+    const predictedMove = predictNextMove(moves, order) || predictMoveByFrequency(moves);
+    const counterMoves = { "グー": "パー", "チョキ": "グー", "パー": "チョキ" };
+    return counterMoves[predictedMove] || randomMove();
 }
 
-// ゲームを実行
+// ゲームを実行（ボタン連打をサポート）
 function playGame(playerHand) {
-    const aiHand = getAIHand();
-    const result = determineWinner(playerHand, aiHand);
+    const computerHand = decideComputerMove(playerMoves, 3);
+    const predictedMove = predictNextMove(playerMoves, 3); // AIの予測
+    const result = judge(playerHand, computerHand);
+
+    // AIの予測成功/失敗を記録
+    if (predictedMove === playerHand) {
+        aiSuccessCount++;
+    } else {
+        aiFailureCount++;
+    }
+
+    // 履歴と結果を保存
+    playerMoves.push(playerHand);
+    results.push({ playerHand, computerHand, result });
+
+    // 統計の更新
+    updateStatistics();
 
     // 結果を画面に表示
-    document.getElementById('result').textContent = `あなた: ${playerHand}, AI: ${aiHand}, 結果: ${result}`;
-
-    // 結果を配列に保存
-    results.push({ playerHand, aiHand, result });
-
-    // 統計を更新
-    updateStatistics();
+    document.getElementById('result').textContent = `あなた: ${playerHand}, AI: ${computerHand}, 結果: ${result}`;
 }
 
-// 統計の更新
+// 統計を更新
 function updateStatistics() {
     const totalGames = results.length;
     const wins = results.filter(result => result.result === '勝ち').length;
     const draws = results.filter(result => result.result === '引き分け').length;
     const losses = results.filter(result => result.result === '負け').length;
-
-    // 勝率（引き分けを除外した試合数を基準）
     const nonDrawGames = totalGames - draws;
     const winRate = nonDrawGames > 0 ? ((wins / nonDrawGames) * 100).toFixed(2) : 0;
 
-    // 統計をHTMLに反映
+    // 統計情報を更新
     document.getElementById('total-games').textContent = `総ゲーム数: ${totalGames}`;
     document.getElementById('win-count').textContent = `勝数: ${wins}`;
     document.getElementById('draw-count').textContent = `引き分け数: ${draws}`;
     document.getElementById('loss-count').textContent = `負け数: ${losses}`;
     document.getElementById('win-rate').textContent = `勝率（引き分け除外）: ${winRate}%`;
+    document.getElementById('ai-success-count').textContent = `AI予測成功数: ${aiSuccessCount}`;
+    document.getElementById('ai-failure-count').textContent = `AI予測失敗数: ${aiFailureCount}`;
 }
 
-// 結果をExcelファイルで保存
-function downloadResults() {
-    if (results.length === 0) {
-        alert('保存する結果がありません');
-        return;
-    }
-
-    // 配列をワークシートに変換
-    const worksheet = XLSX.utils.json_to_sheet(results);
-
-    // ワークブックを作成
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'じゃんけん結果');
-
-    // Excelファイルをダウンロード
-    XLSX.writeFile(workbook, 'janken_results.xlsx');
-}
-
-// ゲームをリセット
-function resetGame() {
-    results.length = 0; // 配列を空にする
-    document.getElementById('result').textContent = '';
-    updateStatistics(); // 統計をリセット
-}
+// ダブルタップや連打を許可する
+document.querySelectorAll(".choices button").forEach(button => {
+    button.addEventListener("click", event => {
+        event.preventDefault(); // デフォルトのクリック動作を防ぐ
+        const playerHand = event.target.textContent;
+        playGame(playerHand);
+    });
+});
