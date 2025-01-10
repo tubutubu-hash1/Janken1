@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AIとじゃんけん</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -10,9 +10,9 @@
     <div class="container">
         <h1>AIとじゃんけん</h1>
         <div class="choices">
-            <button id="rock" onclick="playGame('グー')">グー</button>
-            <button id="scissors" onclick="playGame('チョキ')">チョキ</button>
-            <button id="paper" onclick="playGame('パー')">パー</button>
+            <button onclick="playGame('グー')">グー</button>
+            <button onclick="playGame('チョキ')">チョキ</button>
+            <button onclick="playGame('パー')">パー</button>
         </div>
         <div id="result"></div>
         <div id="statistics" class="statistics">
@@ -22,8 +22,6 @@
             <p id="draw-count">引き分け数: 0</p>
             <p id="loss-count">負け数: 0</p>
             <p id="win-rate">勝率（引き分け除外）: 0%</p>
-            <p id="ai-success-count">AI予測成功数: 0</p>
-            <p id="ai-failure-count">AI予測失敗数: 0</p>
         </div>
         <div class="buttons">
             <button onclick="downloadResults()">結果をExcelで保存</button>
@@ -32,25 +30,5 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="script.js"></script>
-    <script>
-        // ダブルタップズームのみ無効化（2本指ズームは許可）
-        let lastTouchEnd = 0;
-
-        document.addEventListener('touchend', (event) => {
-            const now = new Date().getTime();
-            if (now - lastTouchEnd <= 300) {
-                event.preventDefault(); // ダブルタップズームを無効化
-            }
-            lastTouchEnd = now;
-        }, { passive: false });
-
-        // ボタン連打の結果反映
-        document.querySelectorAll('.choices button').forEach(button => {
-            button.addEventListener('click', event => {
-                const playerHand = event.target.textContent;
-                playGame(playerHand);
-            });
-        });
-    </script>
 </body>
 </html>
