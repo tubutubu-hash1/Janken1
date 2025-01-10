@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>AIとじゃんけん</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -33,21 +33,13 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="script.js"></script>
     <script>
-        // ダブルタップズームを無効化するが、2本指ジェスチャーは許可する
-        document.addEventListener('touchstart', (event) => {
-            // 1本指のタッチのみズームを無効化
-            if (event.touches.length === 1) {
-                event.preventDefault();
-            }
-        }, { passive: false });
-
+        // ダブルタップズームのみ無効化（2本指ズームは許可）
         let lastTouchEnd = 0;
 
         document.addEventListener('touchend', (event) => {
             const now = new Date().getTime();
-            // 300ms以内のダブルタップズームを無効化
-            if (now - lastTouchEnd <= 300 && event.touches.length === 0) {
-                event.preventDefault();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault(); // ダブルタップズームを無効化
             }
             lastTouchEnd = now;
         }, { passive: false });
