@@ -67,3 +67,6 @@ h1 {
 .buttons button:last-child:hover {
     background: #c0342c;
 }
+html {
+  touch-action: manipulation;
+}
