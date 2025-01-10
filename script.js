@@ -1,8 +1,6 @@
-// プレイヤーの手を保存する配列
+// 結果を保存する配列
 const results = [];
-const playerMoves = [];
-let aiSuccessCount = 0;
-let aiFailureCount = 0;
+const playerMoves = []; // プレイヤーの手の履歴を保存
 
 // ランダムに手を選択
 function randomMove() {
@@ -10,64 +8,135 @@ function randomMove() {
     return moves[Math.floor(Math.random() * moves.length)];
 }
 
-// ゲームのロジックはそのままにします
+// マルコフ連鎖による次の手の予測
+function buildTransitionMatrix(moves, order) {
+    const transitionMatrix = {};
+    for (let i = 0; i < moves.length - order; i++) {
+        const state = moves.slice(i, i + order).join(",");
+        const nextMove = moves[i + order];
+        if (!transitionMatrix[state]) {
+            transitionMatrix[state] = { "グー": 0, "チョキ": 0, "パー": 0 };
+        }
+        transitionMatrix[state][nextMove]++;
+    }
+    return transitionMatrix;
+}
+
+function predictNextMove(moves, order) {
+    const state = moves.slice(-order).join(",");
+    const transitionMatrix = buildTransitionMatrix(moves, order);
+
+    if (transitionMatrix[state]) {
+        const nextMoves = transitionMatrix[state];
+        let maxMove = null;
+        let maxCount = -1;
+        for (const move in nextMoves) {
+            if (nextMoves[move] > maxCount) {
+                maxMove = move;
+                maxCount = nextMoves[move];
+            }
+        }
+        return maxMove;
+    } else {
+        return randomMove(); // データがない場合はランダムに手を選択
+    }
+}
+
+// 頻度ベースの予測
+function predictMoveByFrequency(moves) {
+    const moveCounts = { "グー": 0, "チョキ": 0, "パー": 0 };
+    for (const move of moves) {
+        moveCounts[move]++;
+    }
+    let maxMove = null;
+    let maxCount = -1;
+    for (const move in moveCounts) {
+        if (moveCounts[move] > maxCount) {
+            maxMove = move;
+            maxCount = moveCounts[move];
+        }
+    }
+    return maxMove || randomMove();
+}
+
+// コンピュータの手を決定
 function decideComputerMove(moves, order = 3) {
     if (moves.length < order) {
         return randomMove();
     }
-    const predictedMove = predictNextMove(moves, order) || predictMoveByFrequency(moves);
+    const predictedMoveByMarkov = predictNextMove(moves, order);
+    const predictedMoveByFrequency = predictMoveByFrequency(moves);
+
+    // マルコフ連鎖と頻度ベースの予測を併用
+    const predictedMove = predictedMoveByMarkov || predictedMoveByFrequency;
     const counterMoves = { "グー": "パー", "チョキ": "グー", "パー": "チョキ" };
     return counterMoves[predictedMove] || randomMove();
 }
 
-// ゲームを実行（ボタン連打をサポート）
+// 勝敗判定
+function judge(player, computer) {
+    if (player === computer) {
+        return "引き分け";
+    } else if (
+        (player === "グー" && computer === "チョキ") ||
+        (player === "チョキ" && computer === "パー") ||
+        (player === "パー" && computer === "グー")
+    ) {
+        return "勝ち";
+    } else {
+        return "負け";
+    }
+}
+
+// ゲームを実行
 function playGame(playerHand) {
     const computerHand = decideComputerMove(playerMoves, 3);
-    const predictedMove = predictNextMove(playerMoves, 3); // AIの予測
     const result = judge(playerHand, computerHand);
 
-    // AIの予測成功/失敗を記録
-    if (predictedMove === playerHand) {
-        aiSuccessCount++;
-    } else {
-        aiFailureCount++;
-    }
+    // 結果を画面に表示
+    document.getElementById('result').textContent = `あなた: ${playerHand}, AI: ${computerHand}, 結果: ${result}`;
 
     // 履歴と結果を保存
     playerMoves.push(playerHand);
     results.push({ playerHand, computerHand, result });
 
-    // 統計の更新
+    // 統計を更新
     updateStatistics();
-
-    // 結果を画面に表示
-    document.getElementById('result').textContent = `あなた: ${playerHand}, AI: ${computerHand}, 結果: ${result}`;
 }
 
-// 統計を更新
+// 統計の更新
 function updateStatistics() {
     const totalGames = results.length;
     const wins = results.filter(result => result.result === '勝ち').length;
     const draws = results.filter(result => result.result === '引き分け').length;
     const losses = results.filter(result => result.result === '負け').length;
+
     const nonDrawGames = totalGames - draws;
     const winRate = nonDrawGames > 0 ? ((wins / nonDrawGames) * 100).toFixed(2) : 0;
 
-    // 統計情報を更新
     document.getElementById('total-games').textContent = `総ゲーム数: ${totalGames}`;
     document.getElementById('win-count').textContent = `勝数: ${wins}`;
     document.getElementById('draw-count').textContent = `引き分け数: ${draws}`;
     document.getElementById('loss-count').textContent = `負け数: ${losses}`;
     document.getElementById('win-rate').textContent = `勝率（引き分け除外）: ${winRate}%`;
-    document.getElementById('ai-success-count').textContent = `AI予測成功数: ${aiSuccessCount}`;
-    document.getElementById('ai-failure-count').textContent = `AI予測失敗数: ${aiFailureCount}`;
 }
 
-// ダブルタップや連打を許可する
-document.querySelectorAll(".choices button").forEach(button => {
-    button.addEventListener("click", event => {
-        event.preventDefault(); // デフォルトのクリック動作を防ぐ
-        const playerHand = event.target.textContent;
-        playGame(playerHand);
-    });
-});
+// 結果をExcelファイルで保存
+function downloadResults() {
+    if (results.length === 0) {
+        alert('保存する結果がありません');
+        return;
+    }
+    const worksheet = XLSX.utils.json_to_sheet(results);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'じゃんけん結果');
+    XLSX.writeFile(workbook, 'janken_results.xlsx');
+}
+
+// ゲームをリセット
+function resetGame() {
+    results.length = 0;
+    playerMoves.length = 0;
+    document.getElementById('result').textContent = '';
+    updateStatistics();
+}
