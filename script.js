@@ -60,7 +60,7 @@ function predictMoveByFrequency(moves) {
 }
 
 // コンピュータの手を決定
-function decideComputerMove(moves, order = 3) {
+function decideComputerMove(moves, order = 9) {
     if (moves.length < order) {
         return randomMove();
     }
